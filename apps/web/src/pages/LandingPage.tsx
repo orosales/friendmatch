@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/authStore';
 import { motion } from 'framer-motion';
-import { Users, MapPin, Calendar, Shield, Heart, Coffee } from 'lucide-react';
+import { Users, MapPin, Calendar, Shield, Coffee, Sparkles } from 'lucide-react';
 
 export default function LandingPage() {
   const { login } = useAuthStore();
@@ -11,61 +11,41 @@ export default function LandingPage() {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    // Mock login for demo - in real app, this would call OAuth
-    setTimeout(() => {
-      const mockUser = {
-        id: '1',
-        provider: 'google' as const,
-        email: 'demo@example.com',
-        name: 'Demo User',
-        photoUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face',
-        verified: true,
-        interests: [],
-        radiusKm: 10,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      login(mockUser);
+    try {
+      // Redirect to Google OAuth and force account chooser
+      window.location.href = 'http://localhost:3001/api/auth/google?prompt=select_account';
+    } catch (error) {
+      console.error('Google login error:', error);
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleFacebookLogin = async () => {
     setIsLoading(true);
-    // Mock login for demo
-    setTimeout(() => {
-      const mockUser = {
-        id: '2',
-        provider: 'facebook' as const,
-        email: 'demo@facebook.com',
-        name: 'Facebook User',
-        photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face',
-        verified: true,
-        interests: [],
-        radiusKm: 10,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      login(mockUser);
+    try {
+      // Redirect to Facebook OAuth
+      window.location.href = 'http://localhost:3001/api/auth/facebook';
+    } catch (error) {
+      console.error('Facebook login error:', error);
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const features = [
     {
-      icon: <Users className="h-6 w-6" />,
-      title: 'Find Like-Minded People',
-      description: 'Connect with people who share your interests and hobbies.',
+      icon: <Sparkles className="h-6 w-6" />,
+      title: 'Spontaneous Meetups',
+      description: 'Discover instant meetups happening near you right now.',
     },
     {
       icon: <MapPin className="h-6 w-6" />,
-      title: 'Location-Based Matching',
-      description: 'Discover friends in your area with our smart location matching.',
+      title: 'Nearby Friends',
+      description: 'Find people in your area who share your interests and are available.',
     },
     {
-      icon: <Calendar className="h-6 w-6" />,
-      title: 'Plan Meetups',
-      description: 'Create and join events with suggested venues and times.',
+      icon: <Coffee className="h-6 w-6" />,
+      title: 'Casual Connections',
+      description: 'Create instant connections for coffee, activities, or casual hangouts.',
     },
     {
       icon: <Shield className="h-6 w-6" />,
@@ -80,7 +60,10 @@ export default function LandingPage() {
       <header className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Heart className="h-8 w-8 text-primary" />
+            <div className="relative">
+              <Users className="h-8 w-8 text-primary" />
+              <Coffee className="h-4 w-4 text-primary absolute -bottom-1 -right-1 bg-background rounded-full p-0.5" />
+            </div>
             <span className="text-2xl font-bold text-foreground">MeetMates</span>
           </div>
           <div className="flex items-center space-x-4">
@@ -103,12 +86,12 @@ export default function LandingPage() {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
-              Find Your
-              <span className="text-primary"> People</span>
+              Spontaneous
+              <span className="text-primary"> Connections</span>
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Connect with like-minded individuals in your area. Share interests, plan meetups,
-              and build meaningful friendships through our safe, location-based platform.
+              Discover spontaneous meetups happening near you. Find friends who share your interests
+              and create instant connections for coffee, activities, or casual hangouts.
             </p>
           </motion.div>
 
@@ -220,12 +203,16 @@ export default function LandingPage() {
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-center bg-primary/5 rounded-2xl p-12"
         >
-          <Coffee className="h-16 w-16 text-primary mx-auto mb-6" />
+          <div className="relative mx-auto mb-6 w-16 h-16">
+            <Users className="h-16 w-16 text-primary" />
+            <Coffee className="h-6 w-6 text-primary absolute -bottom-1 -right-1 bg-background rounded-full p-1" />
+          </div>
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Ready to Meet Your People?
+            Ready for Spontaneous Connections?
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of people who have already found meaningful connections through MeetMates.
+            Discover instant meetups happening near you. Find friends who share your interests
+            and create spontaneous connections for coffee, activities, or casual hangouts.
           </p>
           <Button size="lg" onClick={handleGoogleLogin} disabled={isLoading}>
             Get Started Now

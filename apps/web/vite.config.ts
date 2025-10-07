@@ -13,9 +13,9 @@ export default defineConfig({
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'MeetMates - Find Your People',
+        name: 'MeetMates - Spontaneous Connections',
         short_name: 'MeetMates',
-        description: 'A friend-finding app for making real-life connections',
+        description: 'Discover instant meetups happening near you for coffee, activities, and casual hangouts',
         theme_color: '#3b82f6',
         background_color: '#ffffff',
         display: 'standalone',
@@ -51,7 +51,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 3002,
     host: true,
   },
   build: {

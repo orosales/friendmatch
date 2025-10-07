@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/authStore';
 import { Interest, VenueType } from '@meetmates/types';
 import { motion } from 'framer-motion';
+import { api } from '@/lib/api';
 import { 
   Calendar, 
   MapPin, 
@@ -113,7 +114,7 @@ export default function CreateInvitePage() {
     maxAttendees: 10,
     visibility: 'public' as const,
     venueType: 'cafe' as VenueType,
-    selectedVenue: null as typeof mockVenues[0] | null,
+    selectedVenue: null, // Start with no venue selected
   });
 
   const handleInputChange = (field: string, value: any) => {
@@ -140,7 +141,7 @@ export default function CreateInvitePage() {
       case 2:
         return formData.interests.length > 0 && formData.startTime !== '';
       case 3:
-        return formData.selectedVenue !== null;
+        return true; // Venue selection is now optional
       default:
         return false;
     }
@@ -159,15 +160,35 @@ export default function CreateInvitePage() {
   };
 
   const handleSubmit = async () => {
-    if (!canProceed()) return;
+    if (!canProceed() || !user) return;
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const inviteData = {
+        ownerId: user.id,
+        title: formData.title,
+        description: formData.description,
+        interests: formData.interests,
+        startTime: formData.startTime,
+        endTime: formData.endTime || undefined,
+        radiusKm: formData.radiusKm,
+        visibility: formData.visibility,
+        venueId: undefined, // Don't use mock venue IDs, make venue optional
+        maxAttendees: formData.maxAttendees,
+      };
+
+      console.log('inviteData', inviteData);
+      
+      await api.createInvite(inviteData);
       navigate('/invites');
-    }, 2000);
+    } catch (error) {
+      console.error('Failed to create invite:', error);
+      // You could add a toast notification here
+      alert('Failed to create invite. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredVenues = mockVenues.filter(venue => 
@@ -359,9 +380,38 @@ export default function CreateInvitePage() {
                   <div>
                     <Label>Suggested Venues</Label>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Based on your location and preferences
+                      Choose a venue (optional) - you can also create an invite without a specific location
                     </p>
                     <div className="space-y-3">
+                      {/* No Venue Option */}
+                      <div
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          formData.selectedVenue === null
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:bg-muted/50'
+                        }`}
+                        onClick={() => setFormData(prev => ({ ...prev, selectedVenue: null }))}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                              <MapPin className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium">No specific venue</h4>
+                              <p className="text-sm text-muted-foreground">Create an invite without a specific location</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {formData.selectedVenue === null && (
+                              <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                                <span className="text-white text-sm">✓</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
                       {filteredVenues.map((venue) => (
                         <div
                           key={venue.id}
@@ -464,12 +514,10 @@ export default function CreateInvitePage() {
                       </span>
                     ))}
                   </div>
-                  {formData.selectedVenue && (
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      {formData.selectedVenue.name}
-                    </div>
-                  )}
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4 mr-1" />
+                    {formData.selectedVenue ? formData.selectedVenue.name : 'No specific venue selected'}
+                  </div>
                 </div>
               </CardContent>
             </Card>

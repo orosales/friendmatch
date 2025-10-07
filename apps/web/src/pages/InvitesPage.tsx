@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { motion } from 'framer-motion';
+import { api, Invite } from '@/lib/api';
 import { 
   Plus, 
   Calendar, 
@@ -13,95 +14,52 @@ import {
   Edit,
   Trash2,
   CheckCircle,
-  XCircle
+  XCircle,
+  Home
 } from 'lucide-react';
 
-// Mock data for demo
-const mockInvites = [
-  {
-    id: '1',
-    title: 'Coffee & Code Meetup',
-    description: 'Let\'s grab coffee and discuss the latest in web development. All skill levels welcome!',
-    startTime: new Date('2024-01-15T14:00:00'),
-    endTime: new Date('2024-01-15T16:00:00'),
-    location: 'Downtown Coffee Co.',
-    interests: ['coding', 'technology', 'entrepreneurship'],
-    maxAttendees: 12,
-    currentAttendees: 8,
-    visibility: 'public' as const,
-    status: 'active' as const,
-    createdAt: new Date('2024-01-10T10:00:00'),
-  },
-  {
-    id: '2',
-    title: 'Weekend Hiking Adventure',
-    description: 'Join us for a scenic hike through the mountain trails. Bring water and snacks!',
-    startTime: new Date('2024-01-20T09:00:00'),
-    endTime: new Date('2024-01-20T15:00:00'),
-    location: 'Mountain Trail Park',
-    interests: ['hiking', 'nature', 'fitness'],
-    maxAttendees: 10,
-    currentAttendees: 5,
-    visibility: 'public' as const,
-    status: 'active' as const,
-    createdAt: new Date('2024-01-12T15:30:00'),
-  },
-  {
-    id: '3',
-    title: 'Photography Workshop',
-    description: 'Learn basic photography techniques and explore the city through your lens.',
-    startTime: new Date('2024-01-18T10:00:00'),
-    endTime: new Date('2024-01-18T14:00:00'),
-    location: 'City Art Gallery',
-    interests: ['photography', 'art', 'education'],
-    maxAttendees: 15,
-    currentAttendees: 12,
-    visibility: 'public' as const,
-    status: 'active' as const,
-    createdAt: new Date('2024-01-08T09:15:00'),
-  },
-  {
-    id: '4',
-    title: 'Cooking Class: Italian Cuisine',
-    description: 'Learn to make authentic Italian pasta and sauces from scratch.',
-    startTime: new Date('2024-01-25T18:00:00'),
-    endTime: new Date('2024-01-25T21:00:00'),
-    location: 'Culinary Studio Downtown',
-    interests: ['cooking', 'food', 'education'],
-    maxAttendees: 8,
-    currentAttendees: 6,
-    visibility: 'friends' as const,
-    status: 'active' as const,
-    createdAt: new Date('2024-01-14T11:20:00'),
-  },
-];
+// Helper function to get current attendees count
+const getCurrentAttendees = (invite: Invite) => {
+  return invite.rsvps?.filter(rsvp => rsvp.status === 'going').length || 0;
+};
 
-const mockRSVPs = [
-  {
-    id: '1',
-    inviteId: '1',
-    status: 'going' as const,
-    user: {
-      name: 'Sarah Johnson',
-      photoUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=32&h=32&fit=crop&crop=face',
-    },
-  },
-  {
-    id: '2',
-    inviteId: '1',
-    status: 'maybe' as const,
-    user: {
-      name: 'Mike Chen',
-      photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face',
-    },
-  },
-];
+// Helper function to get status based on time
+const getInviteStatus = (invite: Invite) => {
+  const now = new Date();
+  const startTime = new Date(invite.startTime);
+  const endTime = invite.endTime ? new Date(invite.endTime) : null;
+  
+  if (endTime && now > endTime) return 'completed';
+  if (now > startTime) return 'active';
+  return 'upcoming';
+};
 
 export default function InvitesPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'my-invites' | 'attending'>('my-invites');
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const formatDate = (date: Date) => {
+  useEffect(() => {
+    const fetchInvites = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.getInvites();
+        setInvites(data);
+      } catch (err) {
+        console.error('Failed to fetch invites:', err);
+        setError('Failed to load invites. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInvites();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -109,7 +67,8 @@ export default function InvitesPage() {
     });
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
@@ -162,10 +121,20 @@ export default function InvitesPage() {
                 Manage your invitations and see who's attending
               </p>
             </div>
-            <Button onClick={() => navigate('/invites/create')} size="lg">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Invite
-            </Button>
+            <div className="flex items-center space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/dashboard')} 
+                size="lg"
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+              <Button onClick={() => navigate('/invites/create')} size="lg">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Invite
+              </Button>
+            </div>
           </div>
         </motion.div>
 
@@ -194,16 +163,49 @@ export default function InvitesPage() {
           </div>
         </motion.div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="text-center py-12"
+          >
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading invites...</p>
+          </motion.div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="text-center py-12"
+          >
+            <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Error loading invites
+            </h3>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </motion.div>
+        )}
+
         {/* Invites List */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="space-y-6"
-        >
-          {mockInvites.map((invite, index) => (
+        {!isLoading && !error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="space-y-6"
+          >
+            {invites.map((invite, index) => (
             <motion.div
-              key={invite.id}
+              key={invite.id || `invite-${index}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -214,8 +216,8 @@ export default function InvitesPage() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <CardTitle className="text-xl">{invite.title}</CardTitle>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invite.status)}`}>
-                          {invite.status}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(getInviteStatus(invite))}`}>
+                          {getInviteStatus(invite)}
                         </span>
                       </div>
                       <CardDescription className="text-base mb-3">
@@ -228,11 +230,11 @@ export default function InvitesPage() {
                         </div>
                         <div className="flex items-center">
                           <MapPin className="h-4 w-4 mr-1" />
-                          {invite.location}
+                          {invite.venue?.name || 'Location TBD'}
                         </div>
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-1" />
-                          {invite.currentAttendees}/{invite.maxAttendees} attendees
+                          {getCurrentAttendees(invite)}/{invite.maxAttendees || '∞'} attendees
                         </div>
                         <div className="flex items-center">
                           <Eye className="h-4 w-4 mr-1" />
@@ -256,12 +258,12 @@ export default function InvitesPage() {
                     <div>
                       <h4 className="text-sm font-medium mb-2">Interests</h4>
                       <div className="flex flex-wrap gap-1">
-                        {invite.interests.map((interest) => (
+                        {invite.interests.map((interest, index) => (
                           <span
-                            key={interest}
+                            key={typeof interest === 'string' ? interest : `interest-${index}`}
                             className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary"
                           >
-                            {interest}
+                            {typeof interest === 'string' ? interest : interest.name || interest}
                           </span>
                         ))}
                       </div>
@@ -271,44 +273,49 @@ export default function InvitesPage() {
                     <div>
                       <h4 className="text-sm font-medium mb-2">Attendees</h4>
                       <div className="flex items-center space-x-2">
-                        {mockRSVPs
-                          .filter(rsvp => rsvp.inviteId === invite.id)
-                          .map((rsvp) => (
-                            <div key={rsvp.id} className="flex items-center space-x-2">
-                              <img
-                                src={rsvp.user.photoUrl}
-                                alt={rsvp.user.name}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                              <div className="flex items-center space-x-1">
-                                <span className="text-sm font-medium">{rsvp.user.name}</span>
-                                <span className={`px-2 py-1 rounded-full text-xs ${getRSVPStatusColor(rsvp.status)}`}>
-                                  {rsvp.status}
-                                </span>
-                              </div>
+                        {invite.rsvps?.slice(0, 3).map((rsvp) => (
+                          <div key={rsvp.id} className="flex items-center space-x-2">
+                            <img
+                              src={rsvp.user.photoUrl || 'https://via.placeholder.com/32'}
+                              alt={rsvp.user.name}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                            <div className="flex items-center space-x-1">
+                              <span className="text-sm font-medium">{rsvp.user.name}</span>
+                              <span className={`px-2 py-1 rounded-full text-xs ${getRSVPStatusColor(rsvp.status)}`}>
+                                {rsvp.status}
+                              </span>
                             </div>
-                          ))}
-                        {invite.currentAttendees > mockRSVPs.filter(rsvp => rsvp.inviteId === invite.id).length && (
+                          </div>
+                        ))}
+                        {(invite.rsvps?.length || 0) > 3 && (
                           <div className="text-sm text-muted-foreground">
-                            +{invite.currentAttendees - mockRSVPs.filter(rsvp => rsvp.inviteId === invite.id).length} more
+                            +{(invite.rsvps?.length || 0) - 3} more
+                          </div>
+                        )}
+                        {(!invite.rsvps || invite.rsvps.length === 0) && (
+                          <div className="text-sm text-muted-foreground">
+                            No attendees yet
                           </div>
                         )}
                       </div>
                     </div>
 
                     {/* Progress Bar */}
-                    <div>
-                      <div className="flex items-center justify-between text-sm mb-1">
-                        <span>Attendance</span>
-                        <span>{invite.currentAttendees}/{invite.maxAttendees}</span>
+                    {invite.maxAttendees && (
+                      <div>
+                        <div className="flex items-center justify-between text-sm mb-1">
+                          <span>Attendance</span>
+                          <span>{getCurrentAttendees(invite)}/{invite.maxAttendees}</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${(getCurrentAttendees(invite) / invite.maxAttendees) * 100}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${(invite.currentAttendees / invite.maxAttendees) * 100}%` }}
-                        />
-                      </div>
-                    </div>
+                    )}
 
                     {/* Actions */}
                     <div className="flex space-x-2 pt-2">
@@ -325,11 +332,12 @@ export default function InvitesPage() {
                 </CardContent>
               </Card>
             </motion.div>
-          ))}
-        </motion.div>
+            ))}
+          </motion.div>
+        )}
 
         {/* Empty State */}
-        {mockInvites.length === 0 && (
+        {!isLoading && !error && invites.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -351,41 +359,48 @@ export default function InvitesPage() {
         )}
 
         {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="mt-8"
-        >
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-primary">{mockInvites.length}</div>
-                  <div className="text-sm text-muted-foreground">Total Invites</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-primary">
-                    {mockInvites.reduce((acc, invite) => acc + invite.currentAttendees, 0)}
+        {!isLoading && !error && invites.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="mt-8"
+          >
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-primary">{invites.length}</div>
+                    <div className="text-sm text-muted-foreground">Total Invites</div>
                   </div>
-                  <div className="text-sm text-muted-foreground">Total Attendees</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-primary">
-                    {mockInvites.filter(invite => invite.status === 'active').length}
+                  <div>
+                    <div className="text-2xl font-bold text-primary">
+                      {invites.reduce((acc, invite) => acc + getCurrentAttendees(invite), 0)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total Attendees</div>
                   </div>
-                  <div className="text-sm text-muted-foreground">Active Invites</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-primary">
-                    {Math.round(mockInvites.reduce((acc, invite) => acc + (invite.currentAttendees / invite.maxAttendees), 0) / mockInvites.length * 100) || 0}%
+                  <div>
+                    <div className="text-2xl font-bold text-primary">
+                      {invites.filter(invite => getInviteStatus(invite) === 'active').length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Active Invites</div>
                   </div>
-                  <div className="text-sm text-muted-foreground">Avg. Attendance</div>
+                  <div>
+                    <div className="text-2xl font-bold text-primary">
+                      {invites.length > 0 ? Math.round(
+                        invites.reduce((acc, invite) => {
+                          const maxAttendees = invite.maxAttendees || 1;
+                          return acc + (getCurrentAttendees(invite) / maxAttendees);
+                        }, 0) / invites.length * 100
+                      ) : 0}%
+                    </div>
+                    <div className="text-sm text-muted-foreground">Avg. Attendance</div>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
       </div>
     </div>
   );

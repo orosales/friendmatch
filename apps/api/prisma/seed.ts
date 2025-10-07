@@ -5,6 +5,42 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
+  // First, create interest categories
+  const interestCategories = [
+    { name: 'sports', description: 'Physical activities and sports' },
+    { name: 'coding', description: 'Programming and software development' },
+    { name: 'religion', description: 'Religious and spiritual activities' },
+    { name: 'food', description: 'Cooking, dining, and culinary experiences' },
+    { name: 'nature', description: 'Outdoor activities and nature appreciation' },
+    { name: 'photography', description: 'Photography and visual arts' },
+    { name: 'music', description: 'Music creation, performance, and appreciation' },
+    { name: 'art', description: 'Visual arts, crafts, and creative expression' },
+    { name: 'travel', description: 'Exploring new places and cultures' },
+    { name: 'reading', description: 'Books, literature, and learning' },
+    { name: 'gaming', description: 'Video games and tabletop gaming' },
+    { name: 'fitness', description: 'Exercise, gym, and physical wellness' },
+    { name: 'cooking', description: 'Culinary arts and food preparation' },
+    { name: 'dancing', description: 'Dance and movement arts' },
+    { name: 'hiking', description: 'Hiking and outdoor adventures' },
+    { name: 'yoga', description: 'Yoga and mindfulness practices' },
+    { name: 'volunteering', description: 'Community service and helping others' },
+    { name: 'entrepreneurship', description: 'Business and startup activities' },
+    { name: 'education', description: 'Learning and educational pursuits' },
+    { name: 'technology', description: 'Tech trends and digital innovation' },
+  ];
+
+  const createdInterests = await Promise.all(
+    interestCategories.map(category =>
+      prisma.interestCategory.upsert({
+        where: { name: category.name },
+        update: category,
+        create: category,
+      })
+    )
+  );
+
+  console.log(`✅ Created/updated ${createdInterests.length} interest categories`);
+
   // Create sample venues
   const venues = await Promise.all([
     prisma.venue.create({
@@ -110,22 +146,12 @@ async function main() {
         name: 'Demo User',
         photoUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face',
         verified: true,
-        interests: ['coding', 'technology', 'entrepreneurship', 'gaming'],
         radiusKm: 10,
         location: {
           latitude: 40.7128,
           longitude: -74.0060,
           geohash: 'dr5regy',
           lastUpdated: new Date(),
-        },
-        availability: {
-          monday: [{ start: '18:00', end: '22:00' }],
-          tuesday: [{ start: '18:00', end: '22:00' }],
-          wednesday: [{ start: '18:00', end: '22:00' }],
-          thursday: [{ start: '18:00', end: '22:00' }],
-          friday: [{ start: '18:00', end: '23:00' }],
-          saturday: [{ start: '10:00', end: '23:00' }],
-          sunday: [{ start: '10:00', end: '20:00' }],
         },
       },
     }),
@@ -136,17 +162,12 @@ async function main() {
         name: 'Sarah Johnson',
         photoUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=64&h=64&fit=crop&crop=face',
         verified: true,
-        interests: ['photography', 'nature', 'hiking', 'travel'],
         radiusKm: 15,
         location: {
           latitude: 40.7589,
           longitude: -73.9851,
           geohash: 'dr5regz',
           lastUpdated: new Date(),
-        },
-        availability: {
-          saturday: [{ start: '09:00', end: '18:00' }],
-          sunday: [{ start: '09:00', end: '18:00' }],
         },
       },
     }),
@@ -157,7 +178,6 @@ async function main() {
         name: 'Mike Chen',
         photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face',
         verified: true,
-        interests: ['coding', 'gaming', 'technology', 'fitness'],
         radiusKm: 8,
         location: {
           latitude: 40.7000,
@@ -165,20 +185,124 @@ async function main() {
           geohash: 'dr5reh0',
           lastUpdated: new Date(),
         },
-        availability: {
-          monday: [{ start: '19:00', end: '23:00' }],
-          tuesday: [{ start: '19:00', end: '23:00' }],
-          wednesday: [{ start: '19:00', end: '23:00' }],
-          thursday: [{ start: '19:00', end: '23:00' }],
-          friday: [{ start: '19:00', end: '24:00' }],
-          saturday: [{ start: '10:00', end: '24:00' }],
-          sunday: [{ start: '10:00', end: '22:00' }],
+      },
+    }),
+    prisma.user.create({
+      data: {
+        provider: 'google',
+        email: 'alex@example.com',
+        name: 'Alex Rodriguez',
+        photoUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face',
+        verified: true,
+        radiusKm: 12,
+        location: {
+          latitude: 40.7500,
+          longitude: -73.9800,
+          geohash: 'dr5reh1',
+          lastUpdated: new Date(),
+        },
+      },
+    }),
+    prisma.user.create({
+      data: {
+        provider: 'facebook',
+        email: 'emma@example.com',
+        name: 'Emma Wilson',
+        photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=64&h=64&fit=crop&crop=face',
+        verified: true,
+        radiusKm: 20,
+        location: {
+          latitude: 40.7200,
+          longitude: -73.9900,
+          geohash: 'dr5reh2',
+          lastUpdated: new Date(),
         },
       },
     }),
   ]);
 
   console.log(`✅ Created ${users.length} users`);
+
+  // Add user interests
+  const userInterests = [
+    // Demo User interests
+    { userId: users[0].id, interestNames: ['coding', 'technology', 'entrepreneurship', 'gaming'] },
+    // Sarah Johnson interests
+    { userId: users[1].id, interestNames: ['photography', 'nature', 'hiking', 'travel'] },
+    // Mike Chen interests
+    { userId: users[2].id, interestNames: ['coding', 'gaming', 'technology', 'fitness'] },
+    // Alex Rodriguez interests
+    { userId: users[3].id, interestNames: ['music', 'art', 'dancing', 'fitness'] },
+    // Emma Wilson interests
+    { userId: users[4].id, interestNames: ['reading', 'education', 'volunteering', 'yoga'] },
+  ];
+
+  for (const userInterest of userInterests) {
+    const interestIds = await prisma.interestCategory.findMany({
+      where: { name: { in: userInterest.interestNames } },
+      select: { id: true }
+    });
+
+    await prisma.userInterest.createMany({
+      data: interestIds.map(interest => ({
+        userId: userInterest.userId,
+        interestId: interest.id,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  console.log(`✅ Added user interests`);
+
+  // Add user availability
+  const availabilityData = [
+    // Demo User - Evening person
+    { userId: users[0].id, dayOfWeek: 'monday', startTime: '18:00', endTime: '22:00' },
+    { userId: users[0].id, dayOfWeek: 'tuesday', startTime: '18:00', endTime: '22:00' },
+    { userId: users[0].id, dayOfWeek: 'wednesday', startTime: '18:00', endTime: '22:00' },
+    { userId: users[0].id, dayOfWeek: 'thursday', startTime: '18:00', endTime: '22:00' },
+    { userId: users[0].id, dayOfWeek: 'friday', startTime: '18:00', endTime: '23:00' },
+    { userId: users[0].id, dayOfWeek: 'saturday', startTime: '10:00', endTime: '23:00' },
+    { userId: users[0].id, dayOfWeek: 'sunday', startTime: '10:00', endTime: '20:00' },
+    
+    // Sarah Johnson - Weekend outdoor person
+    { userId: users[1].id, dayOfWeek: 'saturday', startTime: '09:00', endTime: '18:00' },
+    { userId: users[1].id, dayOfWeek: 'sunday', startTime: '09:00', endTime: '18:00' },
+    
+    // Mike Chen - Night owl
+    { userId: users[2].id, dayOfWeek: 'monday', startTime: '19:00', endTime: '23:00' },
+    { userId: users[2].id, dayOfWeek: 'tuesday', startTime: '19:00', endTime: '23:00' },
+    { userId: users[2].id, dayOfWeek: 'wednesday', startTime: '19:00', endTime: '23:00' },
+    { userId: users[2].id, dayOfWeek: 'thursday', startTime: '19:00', endTime: '23:00' },
+    { userId: users[2].id, dayOfWeek: 'friday', startTime: '19:00', endTime: '24:00' },
+    { userId: users[2].id, dayOfWeek: 'saturday', startTime: '10:00', endTime: '24:00' },
+    { userId: users[2].id, dayOfWeek: 'sunday', startTime: '10:00', endTime: '22:00' },
+    
+    // Alex Rodriguez - Morning person
+    { userId: users[3].id, dayOfWeek: 'monday', startTime: '06:00', endTime: '10:00' },
+    { userId: users[3].id, dayOfWeek: 'tuesday', startTime: '06:00', endTime: '10:00' },
+    { userId: users[3].id, dayOfWeek: 'wednesday', startTime: '06:00', endTime: '10:00' },
+    { userId: users[3].id, dayOfWeek: 'thursday', startTime: '06:00', endTime: '10:00' },
+    { userId: users[3].id, dayOfWeek: 'friday', startTime: '06:00', endTime: '10:00' },
+    { userId: users[3].id, dayOfWeek: 'saturday', startTime: '08:00', endTime: '12:00' },
+    { userId: users[3].id, dayOfWeek: 'sunday', startTime: '08:00', endTime: '12:00' },
+    
+    // Emma Wilson - Flexible schedule
+    { userId: users[4].id, dayOfWeek: 'monday', startTime: '09:00', endTime: '17:00' },
+    { userId: users[4].id, dayOfWeek: 'tuesday', startTime: '09:00', endTime: '17:00' },
+    { userId: users[4].id, dayOfWeek: 'wednesday', startTime: '09:00', endTime: '17:00' },
+    { userId: users[4].id, dayOfWeek: 'thursday', startTime: '09:00', endTime: '17:00' },
+    { userId: users[4].id, dayOfWeek: 'friday', startTime: '09:00', endTime: '17:00' },
+    { userId: users[4].id, dayOfWeek: 'saturday', startTime: '10:00', endTime: '16:00' },
+    { userId: users[4].id, dayOfWeek: 'sunday', startTime: '10:00', endTime: '16:00' },
+  ];
+
+  await prisma.userAvailability.createMany({
+    data: availabilityData,
+    skipDuplicates: true,
+  });
+
+  console.log(`✅ Added user availability data`);
 
   // Create sample invites
   const invites = await Promise.all([
@@ -187,7 +311,6 @@ async function main() {
         ownerId: users[0].id,
         title: 'Coffee & Code Meetup',
         description: 'Let\'s grab coffee and discuss the latest in web development. All skill levels welcome!',
-        interests: ['coding', 'technology', 'entrepreneurship'],
         startTime: new Date('2024-01-15T14:00:00'),
         endTime: new Date('2024-01-15T16:00:00'),
         radiusKm: 10,
@@ -201,7 +324,6 @@ async function main() {
         ownerId: users[1].id,
         title: 'Weekend Hiking Adventure',
         description: 'Join us for a scenic hike through the mountain trails. Bring water and snacks!',
-        interests: ['hiking', 'nature', 'fitness'],
         startTime: new Date('2024-01-20T09:00:00'),
         endTime: new Date('2024-01-20T15:00:00'),
         radiusKm: 15,
@@ -215,7 +337,6 @@ async function main() {
         ownerId: users[2].id,
         title: 'Photography Workshop',
         description: 'Learn basic photography techniques and explore the city through your lens.',
-        interests: ['photography', 'art', 'education'],
         startTime: new Date('2024-01-18T10:00:00'),
         endTime: new Date('2024-01-18T14:00:00'),
         radiusKm: 8,
@@ -226,25 +347,47 @@ async function main() {
     }),
   ]);
 
+  // Add invite interests
+  const inviteInterests = [
+    { inviteId: invites[0].id, interestNames: ['coding', 'technology', 'entrepreneurship'] },
+    { inviteId: invites[1].id, interestNames: ['hiking', 'nature', 'fitness'] },
+    { inviteId: invites[2].id, interestNames: ['photography', 'art', 'education'] },
+  ];
+
+  for (const inviteInterest of inviteInterests) {
+    const interestIds = await prisma.interestCategory.findMany({
+      where: { name: { in: inviteInterest.interestNames } },
+      select: { id: true }
+    });
+
+    await prisma.inviteInterest.createMany({
+      data: interestIds.map(interest => ({
+        inviteId: inviteInterest.inviteId,
+        interestId: interest.id,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
   console.log(`✅ Created ${invites.length} invites`);
 
   // Create sample RSVPs
   const rsvps = await Promise.all([
-    prisma.rsvp.create({
+    prisma.rSVP.create({
       data: {
         userId: users[1].id,
         inviteId: invites[0].id,
         status: 'going',
       },
     }),
-    prisma.rsvp.create({
+    prisma.rSVP.create({
       data: {
         userId: users[2].id,
         inviteId: invites[0].id,
         status: 'maybe',
       },
     }),
-    prisma.rsvp.create({
+    prisma.rSVP.create({
       data: {
         userId: users[0].id,
         inviteId: invites[1].id,

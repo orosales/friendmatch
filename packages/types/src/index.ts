@@ -87,6 +87,39 @@ export const UserSchema = z.object({
   updatedAt: z.date()
 });
 
+export const InterestCategorySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+export type InterestCategory = z.infer<typeof InterestCategorySchema>;
+
+export const UserInterestSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  interestId: z.string().uuid(),
+  createdAt: z.date(),
+  user: UserSchema.optional(),
+  interest: InterestCategorySchema.optional()
+});
+
+export type UserInterest = z.infer<typeof UserInterestSchema>;
+
+export const UserAvailabilitySchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  dayOfWeek: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+export type UserAvailability = z.infer<typeof UserAvailabilitySchema>;
+
 export type User = z.infer<typeof UserSchema>;
 
 export const CreateUserSchema = UserSchema.omit({

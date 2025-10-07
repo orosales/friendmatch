@@ -2,6 +2,7 @@
   "extends": "@meetmates/config/tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "node",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -18,6 +19,8 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
     "paths": {
       "@/*": ["./src/*"],
       "@meetmates/types": ["../../packages/types/src"],

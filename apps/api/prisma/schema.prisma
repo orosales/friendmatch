@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,62 +8,103 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(uuid())
-  provider    String   // 'google' or 'facebook'
-  email       String   @unique
-  name        String
-  photoUrl    String?
-  verified    Boolean  @default(false)
-  interests   String[] // Array of interest strings
-  radiusKm    Int      @default(10)
-  availability Json?   // JSON object for availability schedule
-  location    Json?    // JSON object with lat/lng/geohash
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  ownedInvites Invite[] @relation("InviteOwner")
+  id           String             @id @default(uuid())
+  provider     String
+  email        String             @unique
+  name         String
+  photoUrl     String?
+  verified     Boolean            @default(false)
+  radiusKm     Int                @default(10)
+  location     Json?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  invites      Invite[]
   rsvps        RSVP[]
-  blockedUsers User[]  @relation("UserBlocking")
-  blockedBy    User[]  @relation("UserBlocking")
+  availability UserAvailability[]
+  interests    UserInterest[]
 
   @@map("users")
 }
 
-model Invite {
-  id          String   @id @default(uuid())
-  ownerId     String
-  title       String
-  description String?
-  interests   String[] // Array of interest strings
-  startTime   DateTime
-  endTime     DateTime?
-  radiusKm    Int
-  visibility  String   // 'public', 'friends', 'private'
-  venueId     String?
-  maxAttendees Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model InterestCategory {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  inviteInterests InviteInterest[]
+  userInterests   UserInterest[]
 
-  // Relations
-  owner User  @relation("InviteOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  rsvps RSVP[]
-  venue Venue? @relation(fields: [venueId], references: [id])
+  @@map("interest_categories")
+}
+
+model UserInterest {
+  id         String           @id @default(uuid())
+  userId     String
+  interestId String
+  createdAt  DateTime         @default(now())
+  interest   InterestCategory @relation(fields: [interestId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, interestId])
+  @@map("user_interests")
+}
+
+model UserAvailability {
+  id        String   @id @default(uuid())
+  userId    String
+  dayOfWeek String
+  startTime String
+  endTime   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_availability")
+}
+
+model Invite {
+  id           String           @id @default(uuid())
+  ownerId      String
+  title        String
+  description  String?
+  startTime    DateTime
+  endTime      DateTime?
+  radiusKm     Int
+  visibility   String
+  venueId      String?
+  maxAttendees Int?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  interests    InviteInterest[]
+  owner        User             @relation(fields: [ownerId], references: [id])
+  venue        Venue?           @relation(fields: [venueId], references: [id])
+  rsvps        RSVP[]
 
   @@map("invites")
 }
 
+model InviteInterest {
+  id         String           @id @default(uuid())
+  inviteId   String
+  interestId String
+  createdAt  DateTime         @default(now())
+  interest   InterestCategory @relation(fields: [interestId], references: [id], onDelete: Cascade)
+  invite     Invite           @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+
+  @@unique([inviteId, interestId])
+  @@map("invite_interests")
+}
+
 model RSVP {
-  id       String @id @default(uuid())
-  userId   String
-  inviteId String
-  status   String // 'going', 'maybe', 'not_going'
+  id        String   @id @default(uuid())
+  userId    String
+  inviteId  String
+  status    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  // Relations
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invite Invite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  invite    Invite   @relation(fields: [inviteId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, inviteId])
   @@map("rsvps")
@@ -75,34 +113,19 @@ model RSVP {
 model Venue {
   id           String   @id @default(uuid())
   name         String
-  type         String   // 'cafe', 'restaurant', 'library', 'park', etc.
+  type         String
   address      String
   latitude     Float
   longitude    Float
   rating       Float?
-  openingHours Json?    // JSON object with opening hours
+  openingHours Json?
   phone        String?
   website      String?
   description  String?
-  amenities    String[] // Array of amenity strings
+  amenities    String[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  // Relations
-  invites Invite[]
+  invites      Invite[]
 
   @@map("venues")
-}
-
-model Report {
-  id          String   @id @default(uuid())
-  reporterId  String
-  reportedId  String
-  reason      String   // 'spam', 'inappropriate', 'harassment', 'fake', 'other'
-  description String?
-  status      String   @default('pending') // 'pending', 'reviewed', 'resolved', 'dismissed'
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("reports")
 }

@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (same as production)
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: meetmates-postgres-dev
+    environment:
+      POSTGRES_DB: meetmates
+      POSTGRES_USER: meetmates
+      POSTGRES_PASSWORD: meetmates123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./infra/docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - meetmates-network
+
+  # API Service (development mode)
+  api-dev:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: meetmates-api-dev
+    environment:
+      DATABASE_URL: postgresql://meetmates:meetmates123@postgres:5432/meetmates?schema=public
+      NODE_ENV: development
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    networks:
+      - meetmates-network
+    command: npm run dev
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  meetmates-network:
+    driver: bridge
+
+

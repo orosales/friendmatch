@@ -11,6 +11,9 @@ import MatchesPage from './pages/MatchesPage';
 import InvitesPage from './pages/InvitesPage';
 import CreateInvitePage from './pages/CreateInvitePage';
 import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
+import AvailabilityPage from './pages/AvailabilityPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
 function App() {
@@ -36,13 +39,17 @@ function App() {
           path="/"
           element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />}
         />
+        <Route
+          path="/auth/callback"
+          element={<AuthCallbackPage />}
+        />
 
         {/* Protected routes */}
         <Route
           path="/onboarding"
           element={
             user ? (
-              user.interests.length === 0 ? (
+              !user.interests || user.interests.length === 0 ? (
                 <OnboardingPage />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -57,7 +64,7 @@ function App() {
           path="/dashboard"
           element={
             user ? (
-              user.interests.length > 0 ? (
+              user.interests && user.interests.length > 0 ? (
                 <DashboardPage />
               ) : (
                 <Navigate to="/onboarding" replace />
@@ -72,7 +79,7 @@ function App() {
           path="/matches"
           element={
             user ? (
-              user.interests.length > 0 ? (
+              user.interests && user.interests.length > 0 ? (
                 <MatchesPage />
               ) : (
                 <Navigate to="/onboarding" replace />
@@ -87,7 +94,7 @@ function App() {
           path="/invites"
           element={
             user ? (
-              user.interests.length > 0 ? (
+              user.interests && user.interests.length > 0 ? (
                 <InvitesPage />
               ) : (
                 <Navigate to="/onboarding" replace />
@@ -102,7 +109,7 @@ function App() {
           path="/invites/create"
           element={
             user ? (
-              user.interests.length > 0 ? (
+              user.interests && user.interests.length > 0 ? (
                 <CreateInvitePage />
               ) : (
                 <Navigate to="/onboarding" replace />
@@ -117,8 +124,38 @@ function App() {
           path="/profile"
           element={
             user ? (
-              user.interests.length > 0 ? (
+              user.interests && user.interests.length > 0 ? (
                 <ProfilePage />
+              ) : (
+                <Navigate to="/onboarding" replace />
+              )
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            user ? (
+              user.interests && user.interests.length > 0 ? (
+                <SettingsPage />
+              ) : (
+                <Navigate to="/onboarding" replace />
+              )
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/availability"
+          element={
+            user ? (
+              user.interests && user.interests.length > 0 ? (
+                <AvailabilityPage />
               ) : (
                 <Navigate to="/onboarding" replace />
               )

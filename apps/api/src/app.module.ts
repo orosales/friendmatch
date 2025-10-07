@@ -7,8 +7,10 @@ import { UsersModule } from './users/users.module';
 import { MatchesModule } from './matches/matches.module';
 import { InvitesModule } from './invites/invites.module';
 import { VenuesModule } from './venues/venues.module';
+import { AvailabilityModule } from './availability/availability.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { TestController } from './test.controller';
 
 @Module({
   imports: [
@@ -28,8 +30,9 @@ import { AppService } from './app.service';
     MatchesModule,
     InvitesModule,
     VenuesModule,
+    AvailabilityModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, TestController],
   providers: [AppService],
 })
 export class AppModule {}

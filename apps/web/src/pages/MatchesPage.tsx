@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,87 +12,74 @@ import {
   Filter,
   Users,
   Clock,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react';
 
-// Mock data for demo
-const mockMatches = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    photoUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=64&h=64&fit=crop&crop=face',
-    age: 28,
-    sharedInterests: ['photography', 'nature', 'hiking', 'travel'],
-    distance: 2.3,
-    score: 0.92,
-    lastActive: '2 hours ago',
-    bio: 'Passionate photographer who loves exploring nature and capturing beautiful moments.',
-    availability: 'Weekends and evenings',
-  },
-  {
-    id: '2',
-    name: 'Mike Chen',
-    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face',
-    age: 31,
-    sharedInterests: ['coding', 'gaming', 'technology', 'entrepreneurship'],
-    distance: 1.8,
-    score: 0.88,
-    lastActive: '5 hours ago',
-    bio: 'Software engineer by day, gamer by night. Always up for discussing the latest tech trends.',
-    availability: 'Evenings and weekends',
-  },
-  {
-    id: '3',
-    name: 'Emma Davis',
-    photoUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face',
-    age: 26,
-    sharedInterests: ['art', 'music', 'cooking', 'volunteering'],
-    distance: 3.1,
-    score: 0.85,
-    lastActive: '1 day ago',
-    bio: 'Artist and musician who believes in giving back to the community through volunteering.',
-    availability: 'Flexible schedule',
-  },
-  {
-    id: '4',
-    name: 'Alex Rodriguez',
-    photoUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face',
-    age: 29,
-    sharedInterests: ['fitness', 'sports', 'cooking', 'reading'],
-    distance: 4.2,
-    score: 0.82,
-    lastActive: '3 hours ago',
-    bio: 'Fitness enthusiast and amateur chef. Love trying new recipes and staying active.',
-    availability: 'Mornings and weekends',
-  },
-  {
-    id: '5',
-    name: 'Lisa Wang',
-    photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=64&h=64&fit=crop&crop=face',
-    age: 27,
-    sharedInterests: ['yoga', 'meditation', 'nature', 'education'],
-    distance: 2.7,
-    score: 0.79,
-    lastActive: '6 hours ago',
-    bio: 'Yoga instructor and lifelong learner. Passionate about mindfulness and personal growth.',
-    availability: 'Mornings and afternoons',
-  },
-];
+interface Match {
+  id: string;
+  name: string;
+  email: string;
+  photoUrl: string;
+  interests: string[];
+  radiusKm: number;
+  age: number;
+  distance: number;
+  score: number;
+  lastActive: string;
+  bio: string;
+  availability: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function MatchesPage() {
   const { user } = useAuthStore();
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'score' | 'distance' | 'recent'>('score');
   const [showFilters, setShowFilters] = useState(false);
 
-  const filteredMatches = mockMatches
+  // Fetch matches from API
+  useEffect(() => {
+    const fetchMatches = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const url = user?.id 
+          ? `http://localhost:3001/api/matches?userId=${user.id}`
+          : 'http://localhost:3001/api/matches';
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch matches');
+        }
+        
+        const data = await response.json();
+        setMatches(data);
+      } catch (err) {
+        console.error('Error fetching matches:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch matches');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMatches();
+  }, [user?.id]);
+
+  const filteredMatches = matches
     .filter(match => {
       const matchesSearch = match.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            match.bio.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesInterests = selectedInterests.length === 0 || 
                               selectedInterests.some(interest => 
-                                match.sharedInterests.includes(interest)
+                                match.interests.includes(interest)
                               );
       return matchesSearch && matchesInterests;
     })
@@ -103,7 +90,7 @@ export default function MatchesPage() {
         case 'distance':
           return a.distance - b.distance;
         case 'recent':
-          return 0; // Would need actual timestamps for proper sorting
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         default:
           return 0;
       }
@@ -130,6 +117,38 @@ export default function MatchesPage() {
     if (score >= 0.7) return 'Good Match';
     return 'Potential Match';
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading matches...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <div className="text-red-500 mb-4">
+              <Users className="h-12 w-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Error Loading Matches</h3>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -267,9 +286,9 @@ export default function MatchesPage() {
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Shared Interests</h4>
+                    <h4 className="text-sm font-medium mb-2">Interests</h4>
                     <div className="flex flex-wrap gap-1">
-                      {match.sharedInterests.map((interest) => (
+                      {match.interests.map((interest) => (
                         <span
                           key={interest}
                           className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary"

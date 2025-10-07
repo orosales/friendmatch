@@ -40,8 +40,8 @@ export function calculateAvailabilityOverlap(
   let totalPossible = 0;
   
   for (const day of days) {
-    const slots1 = availability1[day] || [];
-    const slots2 = availability2[day] || [];
+    const slots1 = (availability1[day] || []).filter(slot => slot.start && slot.end) as Array<{ start: string; end: string }>;
+    const slots2 = (availability2[day] || []).filter(slot => slot.start && slot.end) as Array<{ start: string; end: string }>;
     
     if (slots1.length === 0 && slots2.length === 0) {
       totalPossible += 1;

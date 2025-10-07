@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/authStore';
 import { motion } from 'framer-motion';
+import { api, Invite } from '@/lib/api';
+import UserMenu from '@/components/UserMenu';
 import { 
   Users, 
   Calendar, 
@@ -16,64 +18,65 @@ import {
   Coffee
 } from 'lucide-react';
 
-// Mock data for demo
-const mockStats = {
-  totalMatches: 12,
-  activeInvites: 3,
-  upcomingEvents: 2,
-  newMatches: 4,
+// Helper functions
+const getCurrentAttendees = (invite: Invite) => {
+  return invite.rsvps?.filter(rsvp => rsvp.status === 'going').length || 0;
 };
 
-const mockRecentMatches = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    photoUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=64&h=64&fit=crop&crop=face',
-    sharedInterests: ['photography', 'nature', 'hiking'],
-    distance: 2.3,
-    lastActive: '2 hours ago',
-  },
-  {
-    id: '2',
-    name: 'Mike Chen',
-    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face',
-    sharedInterests: ['coding', 'gaming', 'technology'],
-    distance: 1.8,
-    lastActive: '5 hours ago',
-  },
-  {
-    id: '3',
-    name: 'Emma Davis',
-    photoUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face',
-    sharedInterests: ['art', 'music', 'cooking'],
-    distance: 3.1,
-    lastActive: '1 day ago',
-  },
-];
+const formatEventDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = date.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'long' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
 
-const mockUpcomingEvents = [
-  {
-    id: '1',
-    title: 'Coffee & Code Meetup',
-    date: 'Tomorrow, 2:00 PM',
-    location: 'Downtown Coffee Co.',
-    attendees: 8,
-    maxAttendees: 12,
-  },
-  {
-    id: '2',
-    title: 'Weekend Hiking Adventure',
-    date: 'Saturday, 9:00 AM',
-    location: 'Mountain Trail Park',
-    attendees: 5,
-    maxAttendees: 10,
-  },
-];
+const formatEventTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [recentMatches, setRecentMatches] = useState<any[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log('Dashboard: Starting to fetch invites...');
+        setIsDataLoading(true);
+        setError(null);
+        const [invitesData, matchesData] = await Promise.all([
+          api.getInvites(),
+          api.getMatches(user?.id),
+        ]);
+        console.log('Dashboard: Received invites data:', invitesData);
+        console.log('Dashboard: Received matches data:', matchesData);
+        setInvites(invitesData);
+        setRecentMatches(matchesData.slice(0, 3));
+      } catch (err) {
+        console.error('Dashboard: Failed to fetch invites:', err);
+        setError('Failed to load data. Please try again.');
+      } finally {
+        setIsDataLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.id]);
 
   const handleCreateInvite = () => {
     navigate('/invites/create');
@@ -87,12 +90,83 @@ export default function DashboardPage() {
     navigate('/invites');
   };
 
+  const handleViewAvailability = () => {
+    navigate('/availability');
+  };
+
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
   };
+
+  // Debug logging
+  console.log('Dashboard: Current invites state:', invites);
+  console.log('Dashboard: isDataLoading:', isDataLoading);
+  console.log('Dashboard: error:', error);
+
+  // Compute stats from real data
+  const now = new Date();
+  console.log('Dashboard: Current time:', now.toISOString());
+  
+  const activeInvites = invites.filter(invite => {
+    const startTime = new Date(invite.startTime);
+    const endTime = invite.endTime ? new Date(invite.endTime) : null;
+    // An invite is active if it hasn't ended yet (either no end time or current time is before end time)
+    const isActive = !endTime || now <= endTime;
+    console.log(`Dashboard: Invite "${invite.title}" - startTime: ${startTime.toISOString()}, endTime: ${endTime?.toISOString() || 'none'}, isActive: ${isActive}`);
+    return isActive;
+  });
+  
+  const upcomingEvents = invites.filter(invite => {
+    const startTime = new Date(invite.startTime);
+    // An event is upcoming if it starts in the future
+    const isUpcoming = startTime > now;
+    console.log(`Dashboard: Invite "${invite.title}" - startTime: ${startTime.toISOString()}, isUpcoming: ${isUpcoming}`);
+    return isUpcoming;
+  });
+
+  // Events that are currently happening (between start and end time)
+  const currentEvents = invites.filter(invite => {
+    const startTime = new Date(invite.startTime);
+    const endTime = invite.endTime ? new Date(invite.endTime) : null;
+    const isCurrentlyHappening = now >= startTime && (!endTime || now <= endTime);
+    console.log(`Dashboard: Invite "${invite.title}" - isCurrentlyHappening: ${isCurrentlyHappening}`);
+    return isCurrentlyHappening;
+  });
+  
+  console.log('Dashboard: Active invites count:', activeInvites.length);
+  console.log('Dashboard: Upcoming events count:', upcomingEvents.length);
+  console.log('Dashboard: Current events count:', currentEvents.length);
+
+  const stats = {
+    totalMatches: recentMatches.length > 0 ? undefined : undefined,
+    activeInvites: activeInvites.length,
+    upcomingEvents: upcomingEvents.length,
+    currentEvents: currentEvents.length,
+    newMatches: 0,
+  };
+
+  // Get events for display (current + upcoming events in next 7 days)
+  const allDisplayEvents = [...currentEvents, ...upcomingEvents]
+    .filter(invite => {
+      const startTime = new Date(invite.startTime);
+      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return startTime <= sevenDaysFromNow;
+    })
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()) // Sort by start time
+    .slice(0, 2) // Show only first 2
+    .map(invite => ({
+      id: invite.id,
+      title: invite.title,
+      date: `${formatEventDate(invite.startTime)}, ${formatEventTime(invite.startTime)}`,
+      location: invite.venue?.name || 'Location TBD',
+      attendees: getCurrentAttendees(invite),
+      maxAttendees: invite.maxAttendees || 0,
+      isCurrentlyHappening: currentEvents.some(ce => ce.id === invite.id),
+    }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -104,12 +178,19 @@ export default function DashboardPage() {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            {getGreeting()}, {user?.name?.split(' ')[0]}! 👋
-          </h1>
-          <p className="text-muted-foreground">
-            Ready to meet some amazing people today?
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                {getGreeting()}, {user?.name?.split(' ')[0]}! 👋
+              </h1>
+              <p className="text-muted-foreground">
+                Ready to meet some amazing people today?
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <UserMenu />
+            </div>
+          </div>
         </motion.div>
 
         {/* Quick Actions */}
@@ -117,7 +198,7 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="grid md:grid-cols-3 gap-6 mb-8"
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
         >
           <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={handleViewMatches}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -125,7 +206,7 @@ export default function DashboardPage() {
               <Search className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{mockStats.totalMatches}</div>
+              <div className="text-2xl font-bold text-primary">{recentMatches.length}</div>
               <p className="text-xs text-muted-foreground">
                 People with shared interests nearby
               </p>
@@ -151,9 +232,22 @@ export default function DashboardPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{mockStats.activeInvites}</div>
+              <div className="text-2xl font-bold text-primary">{stats.activeInvites}</div>
               <p className="text-xs text-muted-foreground">
                 Active invitations you've created
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={handleViewAvailability}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Availability</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">📅</div>
+              <p className="text-xs text-muted-foreground">
+                Set your weekly schedule
               </p>
             </CardContent>
           </Card>
@@ -182,50 +276,30 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mockRecentMatches.map((match, index) => (
-                  <motion.div
-                    key={match.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="flex items-center space-x-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                  >
-                    <img
-                      src={match.photoUrl}
-                      alt={match.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {match.name}
-                        </p>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {match.distance} km
+                {isDataLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground">Loading matches...</p>
+                  </div>
+                ) : recentMatches.length > 0 ? (
+                  recentMatches.map((m, index) => (
+                    <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <img src={m.photoUrl} alt={m.name} className="w-10 h-10 rounded-full object-cover" />
+                        <div>
+                          <div className="text-sm font-medium">{m.name}</div>
+                          <div className="text-xs text-muted-foreground">{Math.round(m.score * 100)}% match • {Math.round(m.distance)} km</div>
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {match.sharedInterests.slice(0, 2).map((interest) => (
-                          <span
-                            key={interest}
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary"
-                          >
-                            {interest}
-                          </span>
-                        ))}
-                        {match.sharedInterests.length > 2 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{match.sharedInterests.length - 2} more
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Active {match.lastActive}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
+                      <Button size="sm" variant="outline" onClick={handleViewMatches}>View</Button>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground">No matches yet. Update your interests to see matches.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -252,45 +326,71 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mockUpcomingEvents.map((event, index) => (
-                  <motion.div
-                    key={event.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-foreground truncate">
-                          {event.title}
-                        </h4>
-                        <div className="flex items-center text-sm text-muted-foreground mt-1">
-                          <Clock className="h-4 w-4 mr-1" />
-                          {event.date}
+                {isDataLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground">Loading events...</p>
+                  </div>
+                ) : allDisplayEvents.length > 0 ? (
+                  allDisplayEvents.map((event, index) => (
+                    <motion.div
+                      key={event.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-foreground truncate">
+                              {event.title}
+                            </h4>
+                            {event.isCurrentlyHappening && (
+                              <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                Live
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground mt-1">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {event.date}
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground mt-1">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {event.location}
+                          </div>
                         </div>
-                        <div className="flex items-center text-sm text-muted-foreground mt-1">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {event.location}
+                        <div className="text-right">
+                          <div className="text-sm font-medium text-foreground">
+                            {event.attendees}/{event.maxAttendees || '∞'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            attendees
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-foreground">
-                          {event.attendees}/{event.maxAttendees}
+                      {event.maxAttendees > 0 && (
+                        <div className="mt-3 bg-muted rounded-full h-2">
+                          <div
+                            className="bg-primary h-2 rounded-full"
+                            style={{ width: `${(event.attendees / event.maxAttendees) * 100}%` }}
+                          />
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          attendees
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 bg-muted rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full"
-                        style={{ width: `${(event.attendees / event.maxAttendees) * 100}%` }}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
+                      )}
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground">
+                      No upcoming events
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Create an invite to get started!
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

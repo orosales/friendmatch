@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Interest } from '@meetmates/types';
 import { motion } from 'framer-motion';
 import { MapPin, Users, Check } from 'lucide-react';
+import { api } from '@/lib/api';
 
 const INTERESTS: Interest[] = [
   'sports',
@@ -106,24 +107,44 @@ export default function OnboardingPage() {
       return;
     }
 
+    const { user } = useAuthStore.getState();
+    if (!user?.id) {
+      alert('User not found. Please log in again.');
+      return;
+    }
+
     setIsLoading(true);
     
-    // Update user with onboarding data
-    updateUser({
-      interests: selectedInterests,
-      radiusKm: radius,
-      location: location ? {
-        latitude: location.lat,
-        longitude: location.lng,
-        lastUpdated: new Date(),
-      } : undefined,
-    });
+    try {
+      // Update user in database
+      const updatedUser = await api.updateUser(user.id, {
+        interests: selectedInterests,
+        radiusKm: radius,
+        location: location ? {
+          latitude: location.lat,
+          longitude: location.lng,
+          lastUpdated: new Date(),
+        } : undefined,
+      });
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+      // Update local state
+      updateUser({
+        interests: selectedInterests,
+        radiusKm: radius,
+        location: location ? {
+          latitude: location.lat,
+          longitude: location.lng,
+          lastUpdated: new Date(),
+        } : undefined,
+      });
+
       navigate('/dashboard');
-    }, 1000);
+    } catch (error) {
+      console.error('Failed to complete onboarding:', error);
+      alert('Failed to save your preferences. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const canProceed = () => {

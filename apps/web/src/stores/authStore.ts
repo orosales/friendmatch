@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { User } from '@meetmates/types';
+import { api } from '@/lib/api';
 
 interface AuthState {
   user: User | null;
@@ -23,7 +24,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: () => {
     set({ user: null, isAuthenticated: false, isLoading: false });
-    localStorage.removeItem('meetmates_user');
+    // Remove any stored user/session data
+    try {
+      localStorage.removeItem('meetmates_user');
+      // Remove any other app-specific keys if added later
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('meetmates_')) keysToRemove.push(key);
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch {}
+
+    try {
+      // Clear session storage fully to avoid cross-login residue
+      sessionStorage.clear();
+    } catch {}
   },
 
   updateUser: (userData: Partial<User>) => {
@@ -40,8 +56,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const storedUser = localStorage.getItem('meetmates_user');
       if (storedUser) {
         const user = JSON.parse(storedUser) as User;
-        // In a real app, you'd validate the token here
-        set({ user, isAuthenticated: true, isLoading: false });
+        
+        // Try to fetch fresh user data from database
+        try {
+          const freshUser = await api.getUser(user.id);
+          set({ user: freshUser, isAuthenticated: true, isLoading: false });
+          localStorage.setItem('meetmates_user', JSON.stringify(freshUser));
+        } catch (error) {
+          // If API call fails, use stored user data
+          console.warn('Failed to fetch fresh user data, using stored data:', error);
+          set({ user, isAuthenticated: true, isLoading: false });
+        }
       } else {
         set({ user: null, isAuthenticated: false, isLoading: false });
       }

@@ -34,34 +34,25 @@ services:
       timeout: 5s
       retries: 5
 
-  api:
-    build:
-      context: ../../apps/api
-      dockerfile: Dockerfile
-    container_name: meetmates-api
+  adminer:
+    image: adminer:4.8.1
+    container_name: meetmates-adminer
     restart: unless-stopped
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://meetmates:meetmates123@postgres:5432/meetmates
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
-      GOOGLE_CLIENT_ID: your-google-client-id
-      GOOGLE_CLIENT_SECRET: your-google-client-secret
-      FACEBOOK_APP_ID: your-facebook-app-id
-      FACEBOOK_APP_SECRET: your-facebook-app-secret
-      FRONTEND_URL: http://localhost:3000
-      PORT: 3001
     ports:
-      - '3001:3001'
+      - '8080:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ../../apps/api:/app
-      - /app/node_modules
-    command: npm run start:dev
+    healthcheck:
+      test: ['CMD', 'php', '-r', 'file_get_contents("http://localhost:8080");']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Remove the API service for now - we'll run it locally
+  # This avoids the build issues
 
 volumes:
   postgres_data:
