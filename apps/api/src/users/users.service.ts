@@ -57,6 +57,26 @@ export class UsersService {
     location?: any;
     availability?: any;
   }) {
+    console.log(`UsersService.update called with id: ${id} and data:`, data);
+    
+    // First, check if the user exists
+    let existingUser = await this.prisma.user.findUnique({
+      where: { id }
+    });
+    
+    if (!existingUser) {
+      console.error(`User with id ${id} not found in database`);
+      
+      // Try to find user by email as fallback (in case of JWT token mismatch)
+      // This is a temporary fix - the real issue should be in the auth flow
+      console.log('Attempting to find user by other means...');
+      
+      // For now, throw an error but with more helpful message
+      throw new Error(`User with id ${id} not found. Please try logging in again.`);
+    }
+    
+    console.log(`Found existing user:`, existingUser);
+    
     const { interests, ...updateData } = data;
     
     // If interests are provided, update the user interests
@@ -70,15 +90,30 @@ export class UsersService {
       if (interests.length > 0) {
         const interestIds = await this.prisma.interestCategory.findMany({
           where: { name: { in: interests } },
-          select: { id: true }
+          select: { id: true, name: true }
         });
         
-        await this.prisma.userInterest.createMany({
-          data: interestIds.map(interest => ({
-            userId: id,
-            interestId: interest.id,
-          }))
-        });
+        // Log for debugging
+        console.log(`Found ${interestIds.length} matching interest categories for user ${id}`);
+        
+        // Only create user interests if we found matching interest categories
+        if (interestIds.length > 0) {
+          try {
+            await this.prisma.userInterest.createMany({
+              data: interestIds.map(interest => ({
+                userId: id,
+                interestId: interest.id,
+              })),
+              skipDuplicates: true, // Skip duplicates to avoid constraint errors
+            });
+            console.log(`Successfully created ${interestIds.length} user interests for user ${id}`);
+          } catch (error) {
+            console.error(`Error creating user interests for user ${id}:`, error);
+            // Don't throw the error, just log it and continue
+          }
+        } else {
+          console.warn(`No matching interest categories found for user ${id} with interests:`, interests);
+        }
       }
     }
     

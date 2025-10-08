@@ -16,17 +16,30 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const user = req.user as any;
-    
-    // Create or find user in database
-    const dbUser = await this.authService.validateOAuthUser(user);
-    
-    // Generate JWT token
-    const token = await this.authService.generateToken(dbUser);
-    
-    // Redirect to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}&provider=google`);
+    try {
+      const user = req.user as any;
+      console.log('Google OAuth callback received user:', user);
+      
+      // Create or find user in database
+      const dbUser = await this.authService.validateOAuthUser(user);
+      console.log('Database user after validation:', dbUser);
+      
+      if (!dbUser || !dbUser.id) {
+        throw new Error('Failed to create or find user in database');
+      }
+      
+      // Generate JWT token
+      const token = await this.authService.generateToken(dbUser);
+      console.log('Generated JWT token for user:', dbUser.id);
+      
+      // Redirect to frontend with token
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}&provider=google`);
+    } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
+      res.redirect(`${frontendUrl}/auth/callback?error=authentication_failed`);
+    }
   }
 
   @Get('facebook')
